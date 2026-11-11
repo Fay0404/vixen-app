@@ -1,0 +1,39 @@
+name: Build APK
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ekstrak vixen.zip
+        run: unzip -q vixen.zip -d src
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Siapkan proyek Android
+        working-directory: src/vixen/flutter_app
+        run: |
+          flutter create . --platforms=android --org com.asisten --project-name asisten_hp
+          python3 ../scripts/patch_manifest.py
+          flutter pub get
+          dart run flutter_launcher_icons
+      - name: Build APK
+        working-directory: src/vixen/flutter_app
+        run: >
+          flutter build apk --release
+          --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          --dart-define=TURNSTILE_SITE_KEY=${{ secrets.TURNSTILE_SITE_KEY }}
+          --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
+          --dart-define=FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}
+          --dart-define=FIREBASE_SENDER_ID=${{ secrets.FIREBASE_SENDER_ID }}
+          --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vixen-apk
+          path: src/vixen/flutter_app/build/app/outputs/flutter-apk/app-release.apk
